@@ -11,4 +11,4 @@ La musique est centrale dans ma vie. Je joue de la batterie depuis toujours.
 - Le rythme de la batterie structure mon quotidien et m'aide à trouver mon "flow".
 
 ## 🚀 Ce qui m'anime
-Curieux de nature et passionné par les cultures d'Asie (Japon, Corée, Chine) et les traditions du monde, j'aime apprendre et découvrir de nouveaux horizons, non pas à travers les livres, mais grâce à la richesse des échanges humains et des rencontres.
+Curieux de nature et passionné par les cultures du monde mais en majorité d'Asie (Japon, Corée, Chine) et les traditions du monde, j'aime apprendre et découvrir de nouveaux horizons, non pas à travers les livres, mais grâce à la richesse des échanges humains et des rencontres.

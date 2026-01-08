@@ -43,6 +43,11 @@ def index_documents():
             token=os.getenv("UPSTASH_VECTOR_REST_TOKEN")
         )
         
+        # --- AMÉLIORATION 1 : Reset de l'index ---
+        # On supprime tout avant de réindexer pour éviter les doublons ou données fantômes
+        index.reset()
+        print("Index réinitialisé avec succès.")
+        
         # Récupération des fichiers
         md_files = glob.glob("data/*.md")
         if not md_files:
@@ -70,6 +75,5 @@ def index_documents():
         print(f"Erreur d'indexation : {e}")
         return False
 
-# Ce bloc permet de garder le script exécutable via "python indexer.py" si besoin
 if __name__ == "__main__":
     index_documents()
