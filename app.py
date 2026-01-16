@@ -9,27 +9,43 @@ import indexer
 load_dotenv()
 
 # --- CONFIGURATION DE LA PAGE ---
-st.set_page_config(page_title="Portfolio de Jules", page_icon="👋")
+st.set_page_config(page_title="Assistant portfolio de Jules")
 
-# --- SIDEBAR (ADMINISTRATION) ---
+# --- INITIALISATION DES VARIABLES DE SESSION ---
+# On initialise l'historique
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# On initialise la liste des questions suggérées
+if "suggested_questions" not in st.session_state:
+    st.session_state.suggested_questions = [
+        "Quelles sont tes compétences ?",
+        "Parle-moi de tes projets",
+        "Quelle est ton expérience pro ?",
+        "Quelles sont tes passions ?"
+    ]
+
+# --- SIDEBAR (ADMINISTRATION & RESET) ---
 with st.sidebar:
     st.header("⚙️ Administration")
-    st.write("Utilisez ce bouton pour mettre à jour l'IA après avoir modifié vos fichiers Markdown.")
-    
-    if st.button("Mettre à jour les connaissances"):
-        with st.spinner('Indexation en cours...'):
-            success = indexer.index_documents()
-            if success:
-                st.success("Index mis à jour avec succès ! 🚀")
-            else:
-                st.error("Erreur lors de la mise à jour.")
+    if st.button("🗑️ Réinitialiser la conversation"):
+        st.session_state.messages = []
+        # On remet les questions par défaut
+        st.session_state.suggested_questions = [
+            "Quelles sont tes compétences ?",
+            "Parle-moi de tes projets",
+            "Quelle est ton expérience pro ?",
+            "Quelles sont tes passions ?"
+        ]
+        st.rerun() 
+
+    st.divider()
 
 # --- CONFIGURATION UPSTASH (LA TOOL) ---
 @function_tool
 def search_portfolio(query_text: str) -> str:
     """
     Cherche des informations dans le portfolio de Jules Dubuy.
-    À utiliser pour toute question sur le parcours, les projets, les compétences ou les passions.
     """
     try:
         index = Index(
@@ -38,32 +54,31 @@ def search_portfolio(query_text: str) -> str:
         )
         results = index.query(
             data=query_text,
-            top_k=5, # On augmente un peu pour avoir plus de contexte
+            top_k=7,
             include_metadata=True,
             include_data=True
         )
         
         context = ""
         for res in results:
-            source = res.metadata.get('filename', 'Inconnu')
-            context += f"---\nSource: {source}\nContenu:\n{res.data}\n"
+            file_source = res.metadata.get('filename', 'Inconnu')
+            section_source = res.metadata.get('section', 'Général')
+            context += f"---\nSource: {file_source} (Section: {section_source})\nContenu:\n{res.data}\n"
         
         return context if context else "Aucune information trouvée."
     except Exception as e:
         return f"Erreur lors de la recherche : {str(e)}"
 
 # --- CONFIGURATION DE L'AGENT ---
-# Amélioration du Prompt Système (Personnalité + Formatage)
 system_prompt = """
-Tu es l'assistant virtuel de Jules Dubuy, un Data Analyst passionné et curieux.
-Ton rôle est de répondre aux recruteurs et visiteurs de son portfolio.
+Tu es l'assistant virtuel de Jules Dubuy, Data Analyst.
+Ton but est de mettre en valeur son profil auprès des recruteurs.
 
-Règles de comportement :
-1. **Ton** : Sois professionnel mais enthousiaste et dynamique. Montre que Jules est quelqu'un d'agréable.
-2. **Précision** : Utilise TOUJOURS l'outil 'search_portfolio' pour répondre. N'invente rien.
-3. **Formatage** : Utilise le Markdown pour rendre la lecture agréable (listes à puces, gras pour les mots clés).
-4. **Honnêteté** : Si tu ne trouves pas l'info dans les documents, dis-le simplement et propose de contacter Jules directement.
-5. **Contact** : Si l'utilisateur souhaite contacter Jules, donne-lui toujours son email et son LinkedIn de manière claire (ces infos sont dans le fichier contact.md).
+Règles impératives :
+1. **Utilisation de l'outil** : Pour CHAQUE question utilisateur, tu DOIS utiliser l'outil `search_portfolio`. Ne réponds jamais de mémoire.
+2. **Reformulation** : L'outil de recherche fonctionne par mots-clés. Avant d'appeler l'outil, reformule la demande de l'utilisateur pour qu'elle soit précise.
+3. **Réponse** : Sois professionnel, concis et utilise le Markdown.
+4. **Contact** : Propose l'email (jules.dubuy1810@gmail.com) si nécessaire.
 """
 
 if "portfolio_agent" not in st.session_state:
@@ -75,38 +90,55 @@ if "portfolio_agent" not in st.session_state:
     )
 
 # --- INTERFACE DE CHAT ---
-st.title("💬 Discutez avec mon Portfolio")
-st.write("Je peux vous parler de mes projets, de mes expériences ou de mes passions!")
-
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+st.markdown('<div class="main-header"><h1>💬 Discutez avec mon Portfolio</h1><p>Je peux vous parler de mes projets, de mes expériences ou de mes passions!</p></div>', unsafe_allow_html=True)
 
 # Affichage de l'historique
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Zone de saisie
-if prompt := st.chat_input("Ex: Parle-moi de tes projets en Python..."):
+# --- GESTION DES QUESTIONS PRÉDÉFINIES (QUICK REPLIES) ---
+clicked_prompt = None
+
+with st.container():
+    if st.session_state.suggested_questions:
+        st.write("Suggestions :")
+        cols = st.columns(len(st.session_state.suggested_questions))
+
+        for i, question in enumerate(st.session_state.suggested_questions):
+            if cols[i].button(question):
+                clicked_prompt = question
+                st.session_state.suggested_questions.pop(i)
+                # On laisse le code continuer pour traiter le prompt
+
+# --- ZONE DE SAISIE PRINCIPALE ---
+chat_input_prompt = st.chat_input("Posez votre question ici...")
+
+# On détermine quelle est la source du prompt (Clic bouton OU Saisie clavier)
+final_prompt = clicked_prompt if clicked_prompt else chat_input_prompt
+
+if final_prompt:
     # 1. On affiche le message de l'utilisateur
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.messages.append({"role": "user", "content": final_prompt})
     with st.chat_message("user"):
-        st.markdown(prompt)
+        st.markdown(final_prompt)
 
-    # 2. On prépare le contexte (Mémoire de conversation)
-    # On concatène les derniers échanges pour que l'agent ait le contexte
+    # 2. Préparation du contexte (Historique)
     history_str = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages[-5:]]) 
-    full_prompt = f"Historique de la conversation récente :\n{history_str}\n\nNouvelle question utilisateur : {prompt}"
+    full_prompt = f"Historique :\n{history_str}\n\nNouvelle question : {final_prompt}"
 
-    # 3. L'agent répond
+    # 3. Réponse de l'agent
     with st.chat_message("assistant"):
         with st.spinner("Jules réfléchit..."):
             try:
-                # On envoie le prompt enrichi avec l'historique
                 result = Runner.run_sync(st.session_state.portfolio_agent, full_prompt)
                 response = result.final_output
                 
                 st.markdown(response)
                 st.session_state.messages.append({"role": "assistant", "content": response})
+                
+                if clicked_prompt:
+                    st.rerun()
+                    
             except Exception as e:
-                st.error(f"Oups, une erreur est survenue : {e}")
+                st.error(f"Erreur : {e}")

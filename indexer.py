@@ -6,69 +6,89 @@ from upstash_vector import Index, Vector
 # Charger les variables
 load_dotenv()
 
-def parse_markdown_file(file_path):
+def parse_markdown_smart(file_path):
     """
-    Lit un fichier Markdown et le découpe en morceaux basés sur les titres '##'.
+    Découpe le fichier Markdown par titres (##) et sous-titres (###).
+    Capture le titre de la section pour les métadonnées.
     """
     with open(file_path, "r", encoding="utf-8") as f:
-        content = f.read()
+        lines = f.readlines()
 
-    filename = os.path.basename(file_path).replace(".md", "")
-    sections = content.split("## ")
-    
+    filename = os.path.basename(file_path)
     chunks = []
-    for i, section in enumerate(sections):
-        if not section.strip():
-            continue
+    current_title = "Introduction"
+    current_content = []
+    
+    for line in lines:
+        # Détection des titres ## ou ###
+        if line.startswith("## ") or line.startswith("### "):
+            # Si on a déjà du contenu accumulé, on le sauvegarde
+            if current_content:
+                text = "".join(current_content).strip()
+                if text:
+                    chunks.append({
+                        "id": f"{filename}-{len(chunks)}",
+                        "content": f"## {current_title}\n{text}", 
+                        "title": current_title
+                    })
             
-        text_content = section.strip()
-        if i > 0: 
-            text_content = "## " + text_content
+            # On met à jour le nouveau titre (sans les # et espaces)
+            current_title = line.strip("#").strip()
+            current_content = [] # On vide le tampon
+        else:
+            current_content.append(line)
             
-        chunks.append({
-            "id": f"{filename}-{i}",
-            "content": text_content
-        })
+    # Ne pas oublier la dernière section à la fin du fichier
+    if current_content:
+        text = "".join(current_content).strip()
+        if text:
+            chunks.append({
+                "id": f"{filename}-{len(chunks)}",
+                "content": f"## {current_title}\n{text}",
+                "title": current_title
+            })
+            
     return chunks
 
 def index_documents():
     """
-    Fonction principale qui lance l'indexation de tous les fichiers.
-    Retourne True si succès, False sinon.
+    Fonction principale d'indexation mise à jour.
     """
     try:
-        # Connexion
         index = Index(
             url=os.getenv("UPSTASH_VECTOR_REST_URL"),
             token=os.getenv("UPSTASH_VECTOR_REST_TOKEN")
         )
         
-        # --- AMÉLIORATION 1 : Reset de l'index ---
-        # On supprime tout avant de réindexer pour éviter les doublons ou données fantômes
-        index.reset()
-        print("Index réinitialisé avec succès.")
+        index.reset() # Attention : efface tout l'index existant
+        print("Index réinitialisé.")
         
-        # Récupération des fichiers
         md_files = glob.glob("data/*.md")
-        if not md_files:
-            print("Aucun fichier Markdown trouvé dans le dossier 'data'.")
-            return False
-        
         vectors_to_upsert = []
         
         for file_path in md_files:
-            chunks = parse_markdown_file(file_path)
+            # Utilisation de la nouvelle fonction de découpage
+            chunks = parse_markdown_smart(file_path)
+            
             for chunk in chunks:
                 v = Vector(
                     id=chunk['id'],
                     data=chunk['content'],
-                    metadata={"filename": os.path.basename(file_path)}
+                    metadata={
+                        "filename": os.path.basename(file_path),
+                        "section": chunk['title']  
+                    }
                 )
                 vectors_to_upsert.append(v)
                 
         if vectors_to_upsert:
-            index.upsert(vectors=vectors_to_upsert)
-            print(f"Succès : {len(vectors_to_upsert)} sections indexées.")
+            # On envoie par lots de 100 pour éviter les erreurs si beaucoup de données
+            batch_size = 100
+            for i in range(0, len(vectors_to_upsert), batch_size):
+                batch = vectors_to_upsert[i:i+batch_size]
+                index.upsert(vectors=batch)
+                
+            print(f"Succès : {len(vectors_to_upsert)} sections indexées avec métadonnées.")
             return True
             
     except Exception as e:

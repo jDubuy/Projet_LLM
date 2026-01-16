@@ -3,22 +3,29 @@
 ## Projet Web de Gestion Sportive
 **Technologies :** MySQL, PHP, JavaScript
 **Description :**
-Développement d'une application web permettant d'ajouter des joueurs et de simuler une saison sportive avec comparaison statistique. Réalisé en groupe de 3.
+Développement d'une application web de gestion de saison sportive.
+- **Rôle :** Focalisé sur le Back-end et la gestion de la base de données.
+- **Challenge Technique :** Conception de requêtes SQL complexes pour comparer les statistiques des joueurs.
+- **Fonctionnalité clé :** Création d'un tableau de bord avec un "Graphique Papillon" comparant les stats (points, rebonds, passes) de deux joueurs, avec mise en évidence dynamique du leader.
+- **Rétrospective :** La base de données ne contenait que 2 tables principales. Avec le recul, j'aurais dû normaliser davantage les données pour faciliter l'évolutivité.
 
 ## Intégration Datawarehouse
 **Technologies :** Oracle, Docker, Power BI
 **Description :**
 Traitement de fichiers, création et alimentation d'un entrepôt de données (Datawarehouse) et réalisation de tableaux de bord (Dataviz) sur Power BI.
 
-## Collecte de Données (Web Scraping)
-**Technologies :** Python, API
+## Collecte de Données (Sourcing Kaggle)
+**Technologies :** Kaggle, Excel, API
 **Description :**
-Scraping de données et création d'une carte dynamique visualisant les consommations d'énergie.
+Récupération et nettoyage d'un dataset volumineux de statistiques sportives via Kaggle (saison par saison).
+- **Objectif :** Préparer une base de données propre pour l'analyse, sans passer par du scraping complexe, pour se concentrer sur la structure de la donnée.
 
 ## Outil Python Pompiers
-**Technologies :** Python
+**Technologies :** Python (Scripting), Excel
 **Description :**
-Développement d'un outil dynamique utilisant des jointures pour analyser les affectations des casernes de pompiers.
+Développement d'un outil d'agrégation de données pour analyser les affectations des casernes.
+- **Technique :** Consolidation automatique de 6 fichiers Excel hétérogènes (certains contenant des libellés, d'autres des données opérationnelles).
+- **Résultat :** Fusion d'une centaine de lignes de données éparses en une base unifiée exploitable.
 
 ## Note Tracker
 **Technologies :** Excel, VBA
@@ -28,7 +35,7 @@ Création d'un outil de gestion de notes étudiantes (ajout, suppression, bilan 
 ## Dataviz Accidents & COVID
 **Technologies :** R / Python (Dataviz)
 **Description :**
-Analyse statistique des effets de la pandémie de COVID-19 sur les accidents corporels à partir de données publiques (Open Data).
+Première approche de l'analyse statistique sur des données publiques (Open Data). Étude exploratoire des corrélations entre les confinements et la baisse des accidents corporels.
 
 ## Site Web Airbnb
 **Technologies :** JavaScript, Plotly
